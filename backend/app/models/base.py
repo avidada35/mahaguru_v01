@@ -1,0 +1,1 @@
+"""Provides a base class for all models (shared config or fields)."""
