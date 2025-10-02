@@ -29,6 +29,15 @@
 | **DevOps** | Docker, Kubernetes, GitHub Actions |
 | **Monitoring** | Grafana, Prometheus, Custom Dashboards |
 
+
+## 🖼️ Screenshots
+
+<div align="center">
+  <img src="./frontend/screenshots/classroom-chat.png" alt="Classroom Chat UI" width="800" style="border-radius: 12px; margin-bottom: 16px;" />
+  <br/>
+  <img src="./frontend/screenshots/landing-page.png" alt="Landing Page UI" width="800" style="border-radius: 12px;" />
+</div>
+
 ## 📦 Quick Start
 
 ### Prerequisites
