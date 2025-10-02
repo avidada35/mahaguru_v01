@@ -32,11 +32,11 @@
 
 ## 🖼️ Screenshots
 
-<div align="center">
-  <img src="D:\mahaguru_v01\frontend\ss\Screenshot 2025-10-02 204440.png" alt="Classroom Chat UI" width="800" style="border-radius: 12px; margin-bottom: 16px;" />
-  <br/>
-  <img src="D:\mahaguru_v01\frontend\ss\Screenshot 2025-10-02 204513.png" alt="Landing Page UI" width="800" style="border-radius: 12px;" />
-</div>
+<p align="center">
+  <img src="./frontend/screenshots/classroom-chat.png" alt="Classroom Chat UI" width="800" style="border-radius: 12px; margin-bottom: 16px;" />
+  <br>
+  <img src="./frontend/screenshots/landing-page.png" alt="Landing Page UI" width="800" style="border-radius: 12px;" />
+</p>
 
 ## 📦 Quick Start
 
