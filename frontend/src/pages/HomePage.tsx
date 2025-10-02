@@ -8,10 +8,10 @@ const HomePage: React.FC<HomePageProps> = () => {
   const navigate = useNavigate();
 
   const handleSearch = (query: string) => {
+    // Fallback handler - HeroSection handles most navigation directly
     if (query.trim()) {
-      // TODO: Call search API and navigate based on response type
-      // For now, just navigate to a sample classroom
-      navigate('/classroom/sample');
+      // Default fallback: route to classroom chat
+      navigate(`/classroom/chat?query=${encodeURIComponent(query)}`);
     }
   };
 

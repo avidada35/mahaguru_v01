@@ -1,45 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { sendStudentGPTMessage } from '@/services/api';
 
+// ChatBar component for StudentGPT page
 const StudentGPTChat = () => {
+  const [searchParams] = useSearchParams();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Handle initial query from homepage
+  useEffect(() => {
+    const query = searchParams.get('query');
+    if (query && query.trim()) {
+      // Auto-send the initial message from homepage
+      const sendInitialMessage = async () => {
+        setMessages([{ role: 'user', text: query }]);
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await sendStudentGPTMessage(query);
+          setMessages(prev => [...prev, { role: 'assistant', text: response }]);
+        } catch (err: any) {
+          setError('Failed to send message.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      sendInitialMessage();
+    }
+  }, [searchParams]);
+
   const send = async () => {
     const text = input.trim();
     if (!text) return;
-    setMessages((prev) => [...prev, { role: 'user', text }]);
-    setInput('');
+    setMessages((msgs) => [...msgs, { role: 'user', text }]);
     setLoading(true);
     setError(null);
     try {
       const response = await sendStudentGPTMessage(text);
-      setMessages((prev) => [...prev, { role: 'assistant', text: response }]);
+      setMessages((msgs) => [...msgs, { role: 'assistant', text: response }]);
     } catch (err: any) {
-      setError(err?.message || 'Something went wrong.');
+      setError('Failed to send message.');
     } finally {
       setLoading(false);
     }
+    setInput('');
   };
-
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
   return (
     <div className="w-full h-[calc(100vh-64px)] overflow-hidden bg-gradient-to-br from-blue-50/80 via-blue-50/50 to-white/90 pb-28 flex flex-col">
       <div className="flex-1 overflow-y-auto p-4 max-w-3xl mx-auto w-full">
         {messages.length === 0 && (
-          <div className="text-gray-400 text-center mt-10">Start a conversation with StudentGPT!</div>
+          <div className="text-gray-400 text-center mt-10">Start a conversation with StudentGPT...!</div>
         )}
         {messages.map((msg, idx) => (
           <div key={idx} className={`mb-4 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`rounded-xl px-4 py-2 max-w-[80%] ${msg.role === 'user' ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+            <div className={`rounded-xl px-4 py-2 max-w-[80%] ${
+              msg.role === 'user' 
+                ? 'bg-sky-600 text-white ml-20' 
+                : 'bg-gray-100 text-gray-800 mr-20'
+            }`}>
               {msg.text}
             </div>
           </div>
         ))}
         {loading && (
           <div className="mb-4 flex justify-start">
-            <div className="rounded-xl px-4 py-2 bg-gray-100 text-gray-800 animate-pulse">StudentGPT is typing...</div>
+            <div className="rounded-xl px-4 py-2 bg-gray-100 text-gray-800 animate-pulse mr-20">StudentGPT is typing...</div>
           </div>
         )}
         {error && (
@@ -55,12 +89,7 @@ const StudentGPTChat = () => {
               placeholder="Type your message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
+              onKeyDown={handleKeyDown}
               className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 text-gray-800 placeholder-gray-400"
               disabled={loading}
             />

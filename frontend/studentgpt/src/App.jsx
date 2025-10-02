@@ -148,7 +148,7 @@ function App() {
 
     return (
       <div className={`flex items-start ${isUser ? 'justify-end' : 'justify-start'}`}>
-        <div className={`relative flex items-start space-x-4 max-w-2xl group ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+        <div className={`relative flex items-start space-x-4 max-w-2xl group ${isUser ? 'flex-row-reverse space-x-reverse ml-20' : 'mr-20'}`}>
           {/* Avatar */}
           <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${isUser ? 'bg-primary' : 'bg-surface'}`}>
             {isUser ? (

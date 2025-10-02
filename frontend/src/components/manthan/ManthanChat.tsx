@@ -194,8 +194,8 @@ export function ManthanChat({ onClose, onNewMessage }: ManthanChatProps) {
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                       message.isUser
-                        ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-muted rounded-bl-none'
+                        ? 'bg-primary text-primary-foreground rounded-br-none ml-20'
+                        : 'bg-muted rounded-bl-none mr-20'
                     }`}
                   >
                     <div className="prose prose-sm max-w-none">

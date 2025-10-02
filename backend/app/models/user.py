@@ -1,1 +1,0 @@
-"""Defines the database model for users (fields like email, password, etc.)."""

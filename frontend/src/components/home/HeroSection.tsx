@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 interface HeroSectionProps {
-  onSearch: (query: string) => void;
+  // onSearch is now optional since HeroSection handles navigation directly
+  onSearch?: (query: string) => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
@@ -15,11 +16,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedMode === 'Brainstorming' && searchQuery.trim()) {
-      // Redirect to StudentGPT with the query
-      navigate(`/studentgpt?query=${encodeURIComponent(searchQuery)}`);
-    } else {
-      onSearch(searchQuery);
+    if (searchQuery.trim()) {
+      if (selectedMode === 'Brainstorming') {
+        // Navigate to StudentGPT with the query
+        navigate(`/studentgpt?query=${encodeURIComponent(searchQuery)}`);
+      } else if (selectedMode === 'Classroom') {
+        // Navigate to Classroom chat with the query - this connects to classroom.ts → main.py → classroom.py
+        navigate(`/classroom/chat?query=${encodeURIComponent(searchQuery)}`);
+      } else {
+        // Fallback: if no mode selected and onSearch is provided, use it
+        if (onSearch) {
+          onSearch(searchQuery);
+        } else {
+          // Default: treat as general search/classroom if no mode selected
+          navigate(`/classroom/chat?query=${encodeURIComponent(searchQuery)}`);
+        }
+      }
     }
   };
 
@@ -28,10 +40,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
     let starterText = '';
     switch (mode) {
       case 'Brainstorming':
-        starterText = "Ask anything you'd like to learn about...";
+        starterText = "What's going on in your mind?";
         break;
       case 'Classroom':
-        starterText = "Let's prepare...";
+        starterText = "Let's learn together...";
         break;
       default:
         starterText = mode;

@@ -55,7 +55,6 @@ wheels/
 
 # Virtual Environment
 venv/
-.venv/
 env/
 ENV/
 
@@ -101,13 +100,6 @@ __pycache__/
 .cache/
 output/
 logs/
-
-# Model files (too large for GitHub)
-*.safetensors
-*.bin
-model/
-base_model/
-adapters/
 
 # PyTorch cache
 ~/.cache/

@@ -1,1 +1,0 @@
-# Contains API endpoints for authentication (login, register, token, etc.).

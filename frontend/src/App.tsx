@@ -1,4 +1,3 @@
-import React from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
@@ -28,11 +27,8 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
             <Route path="classroom/:id" element={<ClassroomPage />} />
-            <Route path="skills/:id" element={<SkillRoadmapPage />} />
-            <Route 
-              path="studentgpt" 
-              element={<StudentGPTChat />} 
-            />
+            <Route path="classroom/chat" element={<ClassroomPage />} />
+            <Route path="studentgpt" element={<StudentGPTChat />} />
           </Route>
 
           {/* Auth Routes */}
