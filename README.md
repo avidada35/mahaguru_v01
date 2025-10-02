@@ -33,9 +33,9 @@
 ## 🖼️ Screenshots
 
 <div align="center">
-  <img src="./frontend/screenshots/classroom-chat.png" alt="Classroom Chat UI" width="800" style="border-radius: 12px; margin-bottom: 16px;" />
+  <img src="C:\Users\Admin\OneDrive\画像\Screenshots\Screenshot 2025-10-02 204440.png" alt="Classroom Chat UI" width="800" style="border-radius: 12px; margin-bottom: 16px;" />
   <br/>
-  <img src="./frontend/screenshots/landing-page.png" alt="Landing Page UI" width="800" style="border-radius: 12px;" />
+  <img src="C:\Users\Admin\OneDrive\画像\Screenshots\Screenshot 2025-10-02 204513.png" alt="Landing Page UI" width="800" style="border-radius: 12px;" />
 </div>
 
 ## 📦 Quick Start
