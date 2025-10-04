@@ -56,18 +56,6 @@ class ClassroomChatRequest(BaseModel):
     conversation_history: Optional[List[Dict[str, str]]] = None
 
 class ClassroomChatResponse(BaseModel):
-    """
-    Response from the classroom chat endpoint.
-    Supports both direct responses and refinement responses.
-    
-    Attributes:
-        response_type: Either 'direct_response' or 'refinement_needed'
-        bot_message: The AI's direct response (only for direct_response type)
-        source: The model used to generate response (only for direct_response type)
-        refinement_data: Structured refinement suggestions (only for refinement_needed type)
-        timestamp: When the response was generated
-        success: Whether the request was successful
-    """
     response_type: str  # 'direct_response' or 'refinement_needed'
     bot_message: Optional[str] = None  # Only for direct responses
     source: Optional[str] = None       # Only for direct responses
