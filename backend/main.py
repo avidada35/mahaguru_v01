@@ -42,12 +42,16 @@ async def classroom_chat(request: ClassroomChatRequest):
     """
     try:
         print(f"[API] Received classroom chat request from user: {request.user_id}")
+        print(f"[API] User message: '{request.user_message}'")
         
         # Generate response using Gemini API
         bot_message = await generate_classroom_response(
             user_message=request.user_message,
             conversation_history=request.conversation_history
         )
+        
+        print(f"[API] Bot response (first 100 chars): '{bot_message[:100]}...'")
+        print(f"[API] Sending response to frontend")
         
         # Format response with metadata
         response_data = format_response_with_metadata(bot_message)
