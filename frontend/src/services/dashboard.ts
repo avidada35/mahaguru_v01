@@ -1,5 +1,3 @@
-import api from './api';
-
 interface DashboardStats {
   userName: string;
   activeCourses: number;

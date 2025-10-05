@@ -1,16 +1,22 @@
 
 import api from './api';
+import type { ClassroomApiResponse } from '@/types/classroom';
 
 // Send a chat message to the Manthan/Classroom backend API
-export const sendClassroomMessage = async (message: string): Promise<string> => {
+export const sendClassroomMessage = async (message: string): Promise<ClassroomApiResponse | string> => {
   try {
     const response = await api.post('/classroom/chat', { 
       user_message: message,
       user_id: 'anonymous', // You can modify this to use actual user ID when available
       conversation_history: [] // You can extend this to maintain conversation history
     });
-    return response.data.bot_message;
+    
+    console.log('[SERVICE] API response.data:', response.data);
+    // Return full response object to support both direct and refinement responses
+    return response.data;
   } catch (error: any) {
+    console.error('[SERVICE] API error:', error);
+    
     if (error.response?.status === 503) {
       return 'Service unavailable. Please check if the API key is configured correctly.';
     }

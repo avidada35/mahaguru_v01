@@ -1,14 +1,20 @@
 import { useRef, useState, useEffect } from 'react';
+import type { Message, RefinementData, ClassroomApiResponse } from '@/types/classroom';
 import { useSearchParams } from 'react-router-dom';
 import { sendClassroomMessage } from '@/services/classroom';
 import { HiSparkles } from 'react-icons/hi2';
 import { FiSend } from 'react-icons/fi';
+import RefinementPanel from '@/components/classroom/RefinementPanel';
 
 const ClassroomPage = () => {
   const [searchParams] = useSearchParams();
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  // Refinement state
+  const [showRefinement, setShowRefinement] = useState<boolean>(false);
+  const [refinementData, setRefinementData] = useState<RefinementData | null>(null);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,9 +27,13 @@ const ClassroomPage = () => {
         setMessages([{ role: 'user', text: query }]);
         setLoading(true);
         setError(null);
+        // Clear refinement state
+        setShowRefinement(false);
+        setRefinementData(null);
+        setSelectedSuggestions([]);
         try {
           const response = await sendClassroomMessage(query);
-          setMessages(prev => [...prev, { role: 'assistant', text: response }]);
+          handleApiResponse(response, query);
         } catch (err: any) {
           setError(err?.message || 'Something went wrong.');
         } finally {
@@ -32,6 +42,7 @@ const ClassroomPage = () => {
       };
       sendInitialMessage();
     }
+    // eslint-disable-next-line
   }, [searchParams]);
 
   const send = async () => {
@@ -41,9 +52,13 @@ const ClassroomPage = () => {
     setInput('');
     setLoading(true);
     setError(null);
+    // Clear refinement state
+    setShowRefinement(false);
+    setRefinementData(null);
+    setSelectedSuggestions([]);
     try {
       const response = await sendClassroomMessage(text);
-      setMessages((prev) => [...prev, { role: 'assistant', text: response }]);
+      handleApiResponse(response, text);
     } catch (err: any) {
       setError(err?.message || 'Something went wrong.');
     } finally {
@@ -53,22 +68,93 @@ const ClassroomPage = () => {
       }
     }
   };
+
+  // Handle API response for both direct and refinement flows
+  const handleApiResponse = (response: ClassroomApiResponse | string, originalQuery: string) => {
+    console.log('🔍 DEBUG - Raw response:', JSON.stringify(response, null, 2));
+    console.log('[FRONTEND] Received response:', response);
+    console.log('[FRONTEND] Response type:', typeof response);
+    
+    // Handle string responses (errors or backward compatibility)
+    if (typeof response === 'string') {
+      console.log('[FRONTEND] String response detected');
+      setMessages((prev) => [...prev, { role: 'assistant', text: response }]);
+      return;
+    }
+    
+    // Handle object responses with explicit property checks
+    if (response && typeof response === 'object') {
+      // Backend uses 'response_type', frontend types expect 'type' - handle both
+      const responseType = (response as any).type || (response as any).response_type;
+      console.log('[FRONTEND] Response.type/response_type:', responseType);
+      
+      // Direct response handler
+      if (responseType === 'direct_response' && 'bot_message' in response) {
+        console.log('[FRONTEND] ✅ Direct response - displaying message');
+        setMessages((prev) => [...prev, { role: 'assistant', text: (response as any).bot_message }]);
+        return;
+      }
+      
+      // Refinement needed handler
+      if (responseType === 'refinement_needed' && 'refinement_data' in response) {
+        console.log('[FRONTEND] ✅ Refinement needed - showing panel');
+        const refinementData = (response as any).refinement_data;
+        setRefinementData(refinementData);
+        const suggestionCount = refinementData?.suggestions?.length || 0;
+        setSelectedSuggestions(Array.from({ length: suggestionCount }, (_, idx) => idx));
+        setShowRefinement(true);
+        return;
+      }
+    }
+    
+    // Fallback error
+    console.error('[FRONTEND] ❌ Unrecognized format:', response);
+    setMessages((prev) => [...prev, { 
+      role: 'assistant', 
+      text: '🤖 Unrecognized response from backend. Please try again.' 
+    }]);
+  };
+
+  // Handler for confirming refinement
+  const handleRefinementConfirm = () => {
+    if (!refinementData) return;
+    const selected = (refinementData.suggestions || []).filter((_: any, idx: number) => selectedSuggestions.includes(idx));
+    const refinedQuery = `${refinementData.original_query} ${selected.map((s: any) => s.text).join(' ')}`;
+  setMessages((prev) => [...prev, { role: 'assistant', text: `🚧 Main agent is under development. Your refined query: ${refinedQuery}` }]);
+    setShowRefinement(false);
+    setRefinementData(null);
+    setSelectedSuggestions([]);
+    console.log('handleRefinementConfirm called. Refined query:', refinedQuery);
+  };
+
+  // Handler for skipping refinement
+  const handleSkipRefinement = () => {
+    if (!refinementData) return;
+  setMessages((prev) => [...prev, { role: 'assistant', text: `🚧 Main agent is under development. Using your original query: ${refinementData.original_query}` }]);
+    setShowRefinement(false);
+    setRefinementData(null);
+    setSelectedSuggestions([]);
+    console.log('handleSkipRefinement called. Original query:', refinementData.original_query);
+  };
+
+  // Track selectedSuggestions changes
+  useEffect(() => {
+    console.log('selectedSuggestions changed:', selectedSuggestions);
+  }, [selectedSuggestions]);
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Messages Container - Takes full available space with top padding for navbar */}
-      <div className="flex-1 overflow-y-auto pt-16">
+      {/* Welcome Note - Modern AI style, positioned below top bar */}
+      <div className="w-full mt-16 bg-gradient-to-br from-white via-white to-white border-b border-white py-8 px-6 flex flex-col items-center relative">
+        <div className="relative z-10 flex flex-col items-center">
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-700 mb-3 text-center tracking-tight">@Welcome to Classroom</h1>
+          <p className="text-sm sm:text-base text-slate-500 text-center max-w-lg mb-4 leading-relaxed">A focused fool can accomplish more than a distracted genius.</p>
+        </div>
+      </div>
+      {/* Messages Container - below welcome note */}
+      <div className="flex-1 overflow-y-auto pt-4">
         <div className="max-w-4xl mx-auto px-4 py-6">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[60vh] select-none">
-              <HiSparkles className="text-sky-400 text-6xl mb-6" />
-              <h2 className="text-3xl font-bold mb-4 text-gray-800">Welcome to Classroom</h2>
-              <p className="text-lg text-gray-600 mb-4 text-center max-w-2xl leading-relaxed">
-                Share your thoughts, questions, and dilemmas. I'm here to help you think through them and learn together.
-              </p>
-              <div className="text-sm text-gray-400 bg-gray-50 px-4 py-2 rounded-full">
-                Start by typing your question below
-              </div>
-            </div>
+            <div className="flex flex-col items-center justify-center h-full min-h-[40vh] select-none"></div>
           ) : (
             <div className="space-y-6">
               {messages.map((msg, idx) => (
@@ -84,6 +170,24 @@ const ClassroomPage = () => {
                   </div>
                 </div>
               ))}
+              {/* Refinement Panel */}
+              {showRefinement && (
+                <RefinementPanel
+                  originalQuery={refinementData?.original_query || ''}
+                  suggestions={refinementData?.suggestions || []}
+                  reasoning={refinementData?.reasoning || ''}
+                  selectedSuggestions={selectedSuggestions}
+                  onToggleSuggestion={(index) => {
+                    setSelectedSuggestions(prev =>
+                      prev.includes(index)
+                        ? prev.filter(i => i !== index)
+                        : [...prev, index]
+                    );
+                  }}
+                  onConfirm={handleRefinementConfirm}
+                  onSkip={handleSkipRefinement}
+                />
+              )}
               {loading && (
                 <div className="flex justify-start">
                   <div className="max-w-3xl mr-20 px-6 py-4 bg-gray-50 text-gray-800 rounded-2xl border border-gray-100">
@@ -93,7 +197,7 @@ const ClassroomPage = () => {
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                       </div>
-                      <span className="text-gray-500">Let me think...</span>
+                      <span className="text-gray-500">Do the hard thing first</span>
                     </div>
                   </div>
                 </div>
