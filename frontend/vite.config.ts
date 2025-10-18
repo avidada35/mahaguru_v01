@@ -22,7 +22,8 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+        // Remove the rewrite that was causing double /v1
+        // rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
       }
     }
   },

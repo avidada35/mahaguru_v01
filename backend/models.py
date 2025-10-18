@@ -19,9 +19,11 @@ class RefinementSuggestion(BaseModel):
     A single suggestion for refining a user query.
     
     Attributes:
+        question_id: Unique identifier for this question/suggestion
         text: The suggestion question or addition (e.g., 'Are you a beginner?')
         adds: What context this suggestion would add (e.g., 'skill level')
     """
+    question_id: str
     text: str
     adds: str
 
@@ -39,6 +41,76 @@ class RefinementData(BaseModel):
     suggestions: List[RefinementSuggestion]
     reasoning: str
     original_query: str
+
+class UserAnswer(BaseModel):
+    """
+    User's answer to a refinement question.
+    
+    Attributes:
+        question_id: The ID of the question being answered
+        answer: The user's answer/response
+    """
+    question_id: str
+    answer: str
+
+class ContinueRefinementRequest(BaseModel):
+    """
+    Request model for continuing multi-turn refinement.
+    
+    Attributes:
+        original_query: The original user query
+        answers: List of user answers to previous questions
+    """
+    original_query: str
+    answers: List[UserAnswer]
+
+class ConversationTurn(BaseModel):
+    """
+    A single turn in the refinement conversation.
+    
+    Attributes:
+        question_id: Unique identifier for the question
+        question: The question text that was asked
+        answer: The user's answer to the question
+    """
+    question_id: str
+    question: str
+    answer: str
+
+class FinalRefinementPackage(BaseModel):
+    """
+    Final structured package combining user's original query with Q&A answers.
+    
+    Attributes:
+        original_query: The user's original query
+        refined_query: Enhanced version of the original query
+        conversation_history: List of question-answer turns
+        requirements: Extracted requirements and constraints
+        reasoning: Combined reasoning from all refinement rounds
+        refinement_rounds: Number of refinement rounds completed
+        confidence: Confidence score (0.0-1.0) in the refinement quality
+        tags: Categorization tags (academic/non-academic, subject areas)
+        timestamp: ISO 8601 timestamp when package was created
+    """
+    original_query: str
+    refined_query: str
+    conversation_history: List[ConversationTurn]
+    requirements: List[str]
+    reasoning: str
+    refinement_rounds: int
+    confidence: float
+    tags: List[str]
+    timestamp: str
+
+class ContinueRefinementResponse(BaseModel):
+    """
+    Response model for continuing refinement - same structure as RefinementData.
+    """
+    needs_refinement: bool
+    suggestions: List[RefinementSuggestion] = []  # Make optional with default
+    reasoning: str = ""  # Make optional with default
+    original_query: str
+    final_package: Optional[FinalRefinementPackage] = None
 
 # ==================== CLASSROOM MODELS ====================
 

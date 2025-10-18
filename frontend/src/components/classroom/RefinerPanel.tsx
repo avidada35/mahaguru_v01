@@ -1,5 +1,14 @@
 import React from 'react';
-import type { RefinedQueryResponse } from '../../services/refinerService';
+
+interface RefinedQueryResponse {
+  suggestions: any[];
+  missing_info: any[];
+  refined_query?: string;
+  query_type?: string;
+  subject?: string;
+  syllabus?: string;
+  exam_focus?: string;
+}
 
 export interface RefinerPanelProps {
   originalQuery: string;
@@ -24,8 +33,8 @@ export const RefinerPanel: React.FC<RefinerPanelProps> = ({
   // Real-time preview of refined query (simulate changes)
   const getPreviewQuery = () => {
     // For demo: only include suggestions that are checked
-    let preview = refinedData.refined_query;
-    refinedData.suggestions.forEach((s, idx) => {
+    let preview = refinedData.refined_query || '';
+    refinedData.suggestions.forEach((s: any, idx: number) => {
       if (!selectedSuggestions[idx]) {
         preview = preview.replace(s, '');
       }

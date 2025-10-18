@@ -2,9 +2,11 @@ from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from models import (
     ChatRequest, ChatResponse, RegisterRequest, 
-    TokenResponse, UserResponse, ClassroomChatRequest, ClassroomChatResponse
+    TokenResponse, UserResponse, ClassroomChatRequest, ClassroomChatResponse,
+    ContinueRefinementRequest, ContinueRefinementResponse
 )
 from classroom import generate_classroom_response
+from refiner_agent import continue_refinement
 
 app = FastAPI(title="Mahaguru AI Backend", version="1.0.0")
 
@@ -60,6 +62,44 @@ async def classroom_chat(request: ClassroomChatRequest):
         raise HTTPException(
             status_code=500, 
             detail="An error occurred while processing your request. Please try again."
+        )
+
+@app.post("/api/v1/refiner/continue", response_model=ContinueRefinementResponse)
+async def continue_refiner(request: ContinueRefinementRequest):
+    """
+    Continue multi-turn refinement with user answers
+    """
+    try:
+        print(f"[API] Received continue refinement request")
+        print(f"[API] Original query: '{request.original_query}'")
+        print(f"[API] User answers count: {len(request.answers)}")
+        
+        # Convert UserAnswer models to dict format for refiner_agent
+        user_answers = [
+            {"question_id": answer.question_id, "answer": answer.answer}
+            for answer in request.answers
+        ]
+        
+        # Generate continue refinement response
+        response_data = await continue_refinement(
+            original_query=request.original_query,
+            user_answers=user_answers
+        )
+        
+        # Ensure all required fields exist (defense in depth)
+        response_data.setdefault('suggestions', [])
+        response_data.setdefault('reasoning', '')
+        response_data.setdefault('original_query', request.original_query)
+        
+        print(f"[API] Continue refinement response type: {'needs more refinement' if response_data.get('needs_refinement') else 'complete'}")
+        
+        return ContinueRefinementResponse(**response_data)
+        
+    except Exception as e:
+        print(f"[API] Error in continue refinement: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="An error occurred while processing refinement. Please try again."
         )
 
 # Basic auth endpoints that frontend expects

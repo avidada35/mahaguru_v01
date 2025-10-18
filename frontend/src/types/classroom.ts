@@ -24,6 +24,7 @@ export interface MessageMetadata {
 
 // Refinement Types
 export interface RefinementSuggestion {
+  question_id: string;
   text: string;
   adds: string;
 }
@@ -33,6 +34,44 @@ export interface RefinementData {
   suggestions: RefinementSuggestion[];
   reasoning: string;
   original_query: string;
+}
+
+// Multi-turn Refinement Types
+export interface UserAnswer {
+  question_id: string;
+  answer: string;
+}
+
+export interface ContinueRefinementRequest {
+  original_query: string;
+  answers: UserAnswer[];
+}
+
+export interface ContinueRefinementResponse {
+  needs_refinement: boolean;
+  suggestions: RefinementSuggestion[];
+  reasoning: string;
+  original_query: string;
+  final_package?: FinalRefinementPackage;
+}
+
+// Final Refinement Package Types
+export interface ConversationTurn {
+  question_id: string;
+  question: string;
+  answer: string;
+}
+
+export interface FinalRefinementPackage {
+  original_query: string;
+  refined_query: string;
+  conversation_history: ConversationTurn[];
+  requirements: string[];
+  reasoning: string;
+  refinement_rounds: number;
+  confidence: number;
+  tags: string[];
+  timestamp: string;
 }
 
 // API Response Types

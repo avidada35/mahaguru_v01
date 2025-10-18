@@ -1,22 +1,57 @@
 
-import type { RefinementPanelProps } from '@/types/classroom';
+import { useState, useEffect } from 'react';
+import type { RefinementSuggestion } from '@/types/classroom';
+
+interface RefinementPanelProps {
+  originalQuery: string;
+  suggestions: RefinementSuggestion[];
+  reasoning: string;
+  onSubmitAnswers: (answers: Array<{ question_id: string; answer: string }>) => void;
+  onSkip: () => void;
+}
 
 const RefinementPanel = ({
   originalQuery,
   suggestions,
   reasoning,
-  selectedSuggestions,
-  onToggleSuggestion,
-  onConfirm,
+  onSubmitAnswers,
   onSkip,
 }: RefinementPanelProps) => {
-  const handleToggle = (index: number) => {
-    onToggleSuggestion(index);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  // Sync answers state when suggestions change
+  useEffect(() => {
+    setAnswers(prev => {
+      const newAnswers: Record<string, string> = {};
+      suggestions.forEach(s => {
+        newAnswers[s.question_id] = prev[s.question_id] || '';
+      });
+      return newAnswers;
+    });
+  }, [suggestions]);
+
+  const handleAnswerChange = (questionId: string, answer: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }));
   };
 
-  const handleSuggestionRowClick = (index: number) => {
-    handleToggle(index);
+  const handleSubmit = () => {
+    const answerArray = suggestions.map(suggestion => ({
+      question_id: suggestion.question_id,
+      answer: answers[suggestion.question_id] || ''
+    }));
+    onSubmitAnswers(answerArray);
   };
+
+  const hasAllAnswers = suggestions.every(suggestion => 
+    answers[suggestion.question_id]?.trim().length > 0
+  );
+
+  // Debug logging
+  console.log('Suggestions question_ids:', suggestions.map(s => s.question_id));
+  console.log('Answers state:', answers);
 
   return (
     <div className="my-4 p-6 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
@@ -37,48 +72,40 @@ const RefinementPanel = ({
         </div>
       </div>
 
-      {/* Suggestions */}
+      {/* Questions */}
       <div className="mb-8">
-        <label className="block text-sm font-medium text-gray-700 mb-3">Suggested improvements:</label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Please answer these questions:</label>
         {suggestions.length === 0 ? (
           <div className="text-center py-6 px-4 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-700 font-medium">No refinements suggested. Your query is already clear! ✓</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {suggestions.map((suggestion, index) => (
               <div
-                key={index}
-                onClick={() => handleSuggestionRowClick(index)}
-                className="flex items-start gap-3 p-4 rounded-lg border border-blue-100 hover:bg-blue-100/70 hover:border-blue-200 cursor-pointer transition-all duration-200 ease-in-out"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleSuggestionRowClick(index);
-                  }
-                }}
-                aria-label={`Toggle suggestion: ${suggestion.text}`}
+                key={suggestion.question_id}
+                className="p-4 rounded-lg border border-blue-100 bg-white"
               >
-                <input
-                  id={`suggestion-${index}`}
-                  type="checkbox"
-                  checked={selectedSuggestions.includes(index)}
-                  onChange={() => handleToggle(index)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-0.5 h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500 focus:ring-2 flex-shrink-0"
-                  aria-describedby={`suggestion-${index}-description`}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-800 font-medium leading-relaxed">{suggestion.text}</p>
-                  <p 
-                    id={`suggestion-${index}-description`}
-                    className="text-xs text-gray-500 mt-1.5 font-medium"
+                <div className="mb-3">
+                  <label 
+                    htmlFor={`answer-${suggestion.question_id}`}
+                    className="block text-gray-800 font-medium leading-relaxed mb-1"
                   >
-                    → Adds: {suggestion.adds}
+                    {index + 1}. {suggestion.text}
+                  </label>
+                  <p className="text-xs text-gray-500 font-medium">
+                    → This helps us understand: {suggestion.adds}
                   </p>
                 </div>
+                <textarea
+                  id={`answer-${suggestion.question_id}`}
+                  value={answers[suggestion.question_id] || ''}
+                  onChange={(e) => handleAnswerChange(suggestion.question_id, e.target.value)}
+                  placeholder="Type your answer here..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 resize-none"
+                  rows={2}
+                  aria-describedby={`suggestion-${suggestion.question_id}-description`}
+                />
               </div>
             ))}
           </div>
@@ -95,11 +122,16 @@ const RefinementPanel = ({
           Skip Refinement
         </button>
         <button
-          onClick={onConfirm}
-          className="px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 focus:bg-sky-700 focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition-all duration-200 flex-1 font-semibold"
-          aria-label="Send refined query with selected suggestions"
+          onClick={handleSubmit}
+          disabled={!hasAllAnswers}
+          className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex-1 focus:ring-2 focus:ring-offset-2 ${
+            hasAllAnswers
+              ? 'bg-sky-600 text-white hover:bg-sky-700 focus:bg-sky-700 focus:ring-sky-500'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+          aria-label="Submit answers to continue refinement"
         >
-          Send Refined Query ✓
+          Submit Answers ✓
         </button>
       </div>
     </div>

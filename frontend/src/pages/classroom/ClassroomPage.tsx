@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
-import type { Message, RefinementData, ClassroomApiResponse } from '@/types/classroom';
+import type { Message, RefinementData, ClassroomApiResponse, FinalRefinementPackage } from '@/types/classroom';
 import { useSearchParams } from 'react-router-dom';
 import { sendClassroomMessage } from '@/services/classroom';
-import { HiSparkles } from 'react-icons/hi2';
+import { continueRefinement } from '@/services/refinerService';
 import { FiSend } from 'react-icons/fi';
 import RefinementPanel from '@/components/classroom/RefinementPanel';
 
@@ -14,9 +14,14 @@ const ClassroomPage = () => {
   // Refinement state
   const [showRefinement, setShowRefinement] = useState<boolean>(false);
   const [refinementData, setRefinementData] = useState<RefinementData | null>(null);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<number[]>([]);
+  const [refinementRound, setRefinementRound] = useState<number>(0);
+  const [originalQuery, setOriginalQuery] = useState<string>('');
+  const [finalPackage, setFinalPackage] = useState<FinalRefinementPackage | null>(null);
+  const [showFinalSummary, setShowFinalSummary] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const MAX_REFINEMENT_ROUNDS = 2;
 
   // Handle initial query from homepage
   useEffect(() => {
@@ -30,7 +35,8 @@ const ClassroomPage = () => {
         // Clear refinement state
         setShowRefinement(false);
         setRefinementData(null);
-        setSelectedSuggestions([]);
+        setRefinementRound(0);
+        setOriginalQuery(query);
         try {
           const response = await sendClassroomMessage(query);
           handleApiResponse(response, query);
@@ -55,7 +61,8 @@ const ClassroomPage = () => {
     // Clear refinement state
     setShowRefinement(false);
     setRefinementData(null);
-    setSelectedSuggestions([]);
+    setRefinementRound(0);
+    setOriginalQuery(text);
     try {
       const response = await sendClassroomMessage(text);
       handleApiResponse(response, text);
@@ -70,7 +77,7 @@ const ClassroomPage = () => {
   };
 
   // Handle API response for both direct and refinement flows
-  const handleApiResponse = (response: ClassroomApiResponse | string, originalQuery: string) => {
+  const handleApiResponse = (response: ClassroomApiResponse | string, queryUsed: string) => {
     console.log('🔍 DEBUG - Raw response:', JSON.stringify(response, null, 2));
     console.log('[FRONTEND] Received response:', response);
     console.log('[FRONTEND] Response type:', typeof response);
@@ -100,8 +107,8 @@ const ClassroomPage = () => {
         console.log('[FRONTEND] ✅ Refinement needed - showing panel');
         const refinementData = (response as any).refinement_data;
         setRefinementData(refinementData);
-        const suggestionCount = refinementData?.suggestions?.length || 0;
-        setSelectedSuggestions(Array.from({ length: suggestionCount }, (_, idx) => idx));
+        setOriginalQuery(queryUsed);
+        setRefinementRound(1);
         setShowRefinement(true);
         return;
       }
@@ -115,32 +122,64 @@ const ClassroomPage = () => {
     }]);
   };
 
-  // Handler for confirming refinement
-  const handleRefinementConfirm = () => {
-    if (!refinementData) return;
-    const selected = (refinementData.suggestions || []).filter((_: any, idx: number) => selectedSuggestions.includes(idx));
-    const refinedQuery = `${refinementData.original_query} ${selected.map((s: any) => s.text).join(' ')}`;
-  setMessages((prev) => [...prev, { role: 'assistant', text: `🚧 Main agent is under development. Your refined query: ${refinedQuery}` }]);
-    setShowRefinement(false);
-    setRefinementData(null);
-    setSelectedSuggestions([]);
-    console.log('handleRefinementConfirm called. Refined query:', refinedQuery);
+  // Handler for submitting answers in multi-turn refinement
+  const handleSubmitAnswers = async (answers: Array<{ question_id: string; answer: string }>) => {
+    if (!refinementData || !originalQuery) return;
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await continueRefinement(originalQuery, answers);
+      
+      if (response.needs_refinement && refinementRound < MAX_REFINEMENT_ROUNDS) {
+        // Continue refinement with new questions
+        setRefinementData(response);
+        setRefinementRound(prev => prev + 1);
+        setShowRefinement(true);
+      } else {
+        // Refinement complete, handle final package
+        setShowRefinement(false);
+        setRefinementData(null);
+        setRefinementRound(0);
+        
+        if (response.final_package) {
+          // Display final package summary
+          const pkg = response.final_package;
+          setFinalPackage(pkg);
+          setShowFinalSummary(true);
+          setMessages((prev) => [...prev, { 
+            role: 'assistant', 
+            text: `🎯 **Refinement Complete!**\n\n**Enhanced Query:** ${pkg.refined_query}\n\n**Key Requirements:** ${pkg.requirements.join(', ')}\n\n**Confidence Score:** ${Math.round(pkg.confidence * 100)}%\n\n**Tags:** ${pkg.tags.join(', ')}\n\nYour learning request has been successfully refined and is ready for classroom creation!` 
+          }]);
+        } else {
+          // Fallback if no final package
+          setMessages((prev) => [...prev, { 
+            role: 'assistant', 
+            text: `🚧 Main agent is under development. Your refined query is now complete and ready for classroom creation!` 
+          }]);
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to continue refinement.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handler for skipping refinement
   const handleSkipRefinement = () => {
     if (!refinementData) return;
-  setMessages((prev) => [...prev, { role: 'assistant', text: `🚧 Main agent is under development. Using your original query: ${refinementData.original_query}` }]);
+    setMessages((prev) => [...prev, { 
+      role: 'assistant', 
+      text: `🚧 Main agent is under development. Using your original query: ${refinementData.original_query}` 
+    }]);
     setShowRefinement(false);
     setRefinementData(null);
-    setSelectedSuggestions([]);
+    setRefinementRound(0);
     console.log('handleSkipRefinement called. Original query:', refinementData.original_query);
   };
 
-  // Track selectedSuggestions changes
-  useEffect(() => {
-    console.log('selectedSuggestions changed:', selectedSuggestions);
-  }, [selectedSuggestions]);
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Welcome Note - Modern AI style, positioned below top bar */}
@@ -176,17 +215,60 @@ const ClassroomPage = () => {
                   originalQuery={refinementData?.original_query || ''}
                   suggestions={refinementData?.suggestions || []}
                   reasoning={refinementData?.reasoning || ''}
-                  selectedSuggestions={selectedSuggestions}
-                  onToggleSuggestion={(index) => {
-                    setSelectedSuggestions(prev =>
-                      prev.includes(index)
-                        ? prev.filter(i => i !== index)
-                        : [...prev, index]
-                    );
-                  }}
-                  onConfirm={handleRefinementConfirm}
+                  onSubmitAnswers={handleSubmitAnswers}
                   onSkip={handleSkipRefinement}
                 />
+              )}
+              {/* Final Package Summary and Proceed Button */}
+              {showFinalSummary && finalPackage && (
+                <div className="flex justify-center mt-6">
+                  <div className="max-w-2xl w-full p-6 bg-gradient-to-br from-green-50 to-blue-50 border border-green-200 rounded-xl">
+                    <h3 className="text-lg font-semibold text-green-800 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Refinement Summary
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Enhanced Query:</span>
+                        <p className="text-gray-600 mt-1">{finalPackage.refined_query}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Requirements:</span>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {finalPackage.requirements.map((req, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                              {req}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">
+                          <span className="font-medium">Confidence:</span> {Math.round(finalPackage.confidence * 100)}%
+                        </span>
+                        <span className="text-gray-600">
+                          <span className="font-medium">Rounds:</span> {finalPackage.refinement_rounds}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        // TODO: Integrate with main agent when ready
+                        console.log('Proceeding to classroom creation with package:', finalPackage);
+                        setMessages((prev) => [...prev, { 
+                          role: 'assistant', 
+                          text: '🚧 Main Agent integration is under development. Your refined query package has been stored and is ready for classroom creation!' 
+                        }]);
+                        setShowFinalSummary(false);
+                      }}
+                      className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Proceed to Classroom Creation
+                    </button>
+                  </div>
+                </div>
               )}
               {loading && (
                 <div className="flex justify-start">
